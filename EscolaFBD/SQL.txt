@@ -1,0 +1,52 @@
+CREATE TABLE `aluno` (
+  `matricula` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `telefone` char(11) NOT NULL,
+  `data_nasc` date NOT NULL,
+  `sexo` tinyint(1) NOT NULL,
+  `distincao` char(20) DEFAULT NULL,
+  PRIMARY KEY (`matricula`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+CREATE TABLE `aluno_disciplina` (
+  `aluno_matr` int NOT NULL,
+  `disciplina_cod` int NOT NULL,
+  `cod_periodo` char(6) NOT NULL,
+  `nota` float DEFAULT NULL,
+  `frequencia` float DEFAULT NULL,
+  PRIMARY KEY (`aluno_matr`,`disciplina_cod`,`cod_periodo`),
+  KEY `DISCOD` (`disciplina_cod`),
+  CONSTRAINT `ALUMAT` FOREIGN KEY (`aluno_matr`) REFERENCES `aluno` (`matricula`),
+  CONSTRAINT `DISCOD` FOREIGN KEY (`disciplina_cod`) REFERENCES `disciplina` (`codigo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+CREATE TABLE `disciplina` (
+  `codigo` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(255) NOT NULL,
+  `creditos` int NOT NULL,
+  PRIMARY KEY (`codigo`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `alunos_info` AS select `a`.`matricula` AS `matricula`,`a`.`nome` 
+AS `nome`,`a`.`email` AS `email`,`a`.`telefone` AS `telefone`,`a`.`data_nasc` AS `data_nasc`,`a`.`sexo` AS `sexo`,avg(`ad`.`nota`) AS `AVG(nota)` 
+from (`aluno` `a` join `aluno_disciplina` `ad` on((`a`.`matricula` = `ad`.`aluno_matr`))) group by `a`.`matricula`
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `turmas_info` AS select `d`.`nome` AS `nome`,`ad`.`cod_periodo` AS 
+`cod_periodo`,count(0) AS `COUNT(*)`,max(`ad`.`nota`) AS `MAX(nota)`,min(`ad`.`nota`) AS `MIN(nota)`,avg(`ad`.`nota`) AS `AVG(nota)` from
+(`disciplina` `d` join `aluno_disciplina` `ad` on((`d`.`codigo` = `ad`.`disciplina_cod`))) group by `ad`.`disciplina_cod`,`ad`.`cod_periodo`
+
+CREATE DEFINER=`root`@`localhost` TRIGGER `distincao` AFTER INSERT ON `aluno_disciplina` FOR EACH ROW BEGIN
+  DECLARE media FLOAT;
+
+  SELECT AVG(nota) INTO media
+  FROM aluno_disciplina
+  WHERE aluno_matr = NEW.aluno_matr;
+
+  CASE
+    WHEN media = 10 THEN
+      UPDATE aluno SET distincao = 'Summa Cum Laude' WHERE matricula = NEW.aluno_matr;
+    WHEN media BETWEEN 9 AND 9.9 THEN
+      UPDATE aluno SET distincao = 'Magna Cum Laude' WHERE matricula = NEW.aluno_matr;
+  END CASE;
+END
